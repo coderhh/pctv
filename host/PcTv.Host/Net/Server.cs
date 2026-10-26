@@ -103,6 +103,12 @@ public sealed class Server(Config cfg, Pairing pairing, bool testPattern)
                         await writeLock.WaitAsync(ct);
                         try { await Protocol.WriteAsync(s, MsgType.Pong, msg.Payload, ct); } finally { writeLock.Release(); }
                         break;
+                    case MsgType.Input when welcomed:
+                    {
+                        using var doc = msg.Json();
+                        await PcTv.Host.Browser.BrowserHost.Input.HandleAsync(doc.RootElement);
+                        break;
+                    }
                     default:
                         if (!welcomed) break; // ignore everything else until a valid HELLO
                         break; // INPUT / TEXT_COMMIT / STATS handled from M1+

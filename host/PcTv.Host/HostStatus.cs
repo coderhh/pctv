@@ -16,6 +16,7 @@ public static class HostStatus
     public static volatile string? Error;
     public static volatile string MonitorText = "n/a";
     public static volatile string ChromeText = "n/a";
+    public static volatile string CdpText = "n/a";
     /// <summary>Set by the browser host once the virtual monitor is found; read by the capture pipeline.</summary>
     public static volatile PcTv.Host.Display.MonitorInfo? Monitor;
 

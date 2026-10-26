@@ -1,6 +1,8 @@
 import UIKit
 
-/// M1: connects to a host and renders its stream. No pairing or input yet.
+/// M1-M3: connects to a host, renders its stream, and sends pointer input from the Siri Remote.
+/// Remote: drag clickpad = move cursor, circular swipe on the outer ring = scroll, click = left click,
+/// long click = right click, ring clicks = scroll, Menu = browser back. No pairing yet.
 /// The host must run with "RequirePairing": false in pctv.json until M7.
 ///
 /// Host address, in order: env var PCTV_HOST (Xcode scheme → Run → Arguments → Environment Variables),
@@ -17,6 +19,9 @@ final class StreamViewController: UIViewController {
     private let debugLabel = UILabel()
     private var tick = 0
     private var generation = 0 // invalidates reconnect timers from older connections
+    private let remote = RemoteInput()
+    private let cursorLayer = CursorLayer()
+    private var welcomed = false
 
     private var savedHost: String? {
         get { UserDefaults.standard.string(forKey: Self.defaultsKey) }
@@ -44,6 +49,19 @@ final class StreamViewController: UIViewController {
         debugLabel.frame = CGRect(x: 40, y: view.bounds.height - 90, width: view.bounds.width - 80, height: 50)
         debugLabel.autoresizingMask = [.flexibleTopMargin, .flexibleWidth]
         view.addSubview(debugLabel)
+        // The debug line is only shown when PCTV_DEBUG is set in the scheme's environment variables.
+        debugLabel.isHidden = ProcessInfo.processInfo.environment["PCTV_DEBUG"] == nil
+
+        view.layer.addSublayer(cursorLayer)
+        cursorLayer.place(normalized: remote.cursor, in: view.bounds)
+        remote.onCursor = { [weak self] p in
+            guard let self else { return }
+            self.cursorLayer.place(normalized: p, in: self.view.bounds)
+        }
+        remote.onEvent = { [weak self] body in
+            guard let self, self.welcomed else { return }
+            self.conn?.send(Protocol.json(.input, body))
+        }
         Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             guard let self else { return }
             self.tick += 1
@@ -63,8 +81,22 @@ final class StreamViewController: UIViewController {
     }
 
     override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
-        if presses.contains(where: { $0.type == .playPause }) { promptForHost() }
-        else { super.pressesBegan(presses, with: event) }
+        var unhandled = Set<UIPress>()
+        for p in presses {
+            if p.type == .playPause { promptForHost() } // M6 maps this to MediaPlayPause
+            else if !remote.pressBegan(p.type) { unhandled.insert(p) }
+        }
+        if !unhandled.isEmpty { super.pressesBegan(unhandled, with: event) }
+    }
+
+    override func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        presses.forEach { remote.pressEnded($0.type) }
+        super.pressesEnded(presses, with: event)
+    }
+
+    override func pressesCancelled(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        presses.forEach { remote.pressCancelled($0.type) }
+        super.pressesCancelled(presses, with: event)
     }
 
     private func promptForHost() {
@@ -94,6 +126,7 @@ final class StreamViewController: UIViewController {
         generation += 1
         let gen = generation
         videoCount = 0; audioCount = 0
+        welcomed = false
         status.text = "Connecting to \(host):\(port)…   (Play/Pause: change address)"
         let c = Connection(host: host, port: port)
         conn = c
@@ -123,6 +156,7 @@ final class StreamViewController: UIViewController {
                 status.text = "Host refused: \(e)"
             } else {
                 status.text = ""
+                welcomed = true
                 player.start()
             }
         case .video:

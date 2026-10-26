@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>pctv test page</title>
+<style>
+  body { font: 28px sans-serif; margin: 0; }
+  #btn { position: absolute; left: 400px; top: 300px; width: 300px; height: 120px; background: #36c; color: #fff; text-align: center; line-height: 120px; }
+  #hud { position: fixed; right: 10px; top: 10px; background: #ff9; padding: 8px; font-family: monospace; }
+  #tall { height: 6000px; background: linear-gradient(#fff, #888); }
+  input, textarea, [contenteditable] { font-size: 28px; display: block; margin: 12px; width: 600px; }
+  #fields { position: absolute; left: 800px; top: 200px; }
+  a { margin: 12px; display: inline-block; }
+</style>
+</head>
+<body>
+<div id="btn">click me</div>
+<div id="fields">
+  <input id="text" type="text" placeholder="text input">
+  <input id="pw" type="password" placeholder="password">
+  <textarea id="area" placeholder="textarea"></textarea>
+  <div id="ce" contenteditable style="border:1px solid #888;min-height:40px">contenteditable</div>
+  <a id="newtab" href="https://example.com/" target="_blank">open in new tab</a>
+</div>
+<div id="hud"></div>
+<div id="tall"></div>
+<script>
+  // State is mirrored into document.title so tools can read it from the CDP target list.
+  const s = { clicks: 0, rclicks: 0, x: 0, y: 0, keys: '' };
+  function update() {
+    document.getElementById('hud').textContent = JSON.stringify({ ...s, scrollY: Math.round(scrollY) });
+    document.title = `clicks=${s.clicks} rclicks=${s.rclicks} x=${s.x} y=${s.y} scrollY=${Math.round(scrollY)} keys=${s.keys}`;
+  }
+  document.getElementById('btn').addEventListener('click', e => { if (e.isTrusted) s.clicks++; update(); });
+  addEventListener('contextmenu', e => { s.rclicks++; update(); });
+  addEventListener('mousemove', e => { s.x = e.clientX; s.y = e.clientY; update(); });
+  addEventListener('scroll', update);
+  addEventListener('keydown', e => { s.keys += e.key + ','; update(); });
+  update();
+</script>
+</body>
+</html>
