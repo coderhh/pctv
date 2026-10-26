@@ -1,16 +1,30 @@
 import UIKit
 
-/// M1: connects to a hard-coded host and renders its stream. No pairing or input yet.
+/// M1: connects to a host and renders its stream. No pairing or input yet.
 /// The host must run with "RequirePairing": false in pctv.json until M7.
+///
+/// Host address, in order: env var PCTV_HOST (Xcode scheme → Run → Arguments → Environment Variables),
+/// then the address saved from the on-screen prompt. Press Play/Pause to change it. Accepts "ip" or "ip:port".
 final class StreamViewController: UIViewController {
-    // TODO(M7): replaced by discovery. Set this to the PC's LAN IP.
-    static let hostAddress = "192.168.1.100"
-    static let port: UInt16 = 47800
+    private static let defaultsKey = "pctv.host"
+    private static let defaultPort: UInt16 = 47800
 
     private let renderer = VideoRenderer()
     private let player = PCMPlayer()
     private var conn: Connection?
     private let status = UILabel()
+    private var videoCount = 0, audioCount = 0
+    private var generation = 0 // invalidates reconnect timers from older connections
+
+    private var savedHost: String? {
+        get { UserDefaults.standard.string(forKey: Self.defaultsKey) }
+        set { UserDefaults.standard.set(newValue, forKey: Self.defaultsKey) }
+    }
+
+    private var hostSpec: String? {
+        if let e = ProcessInfo.processInfo.environment["PCTV_HOST"], !e.isEmpty { return e }
+        return savedHost
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -18,9 +32,14 @@ final class StreamViewController: UIViewController {
         renderer.layer.frame = view.bounds
         view.layer.addSublayer(renderer.layer)
         status.textColor = .white
-        status.frame = CGRect(x: 40, y: 40, width: 1200, height: 60)
+        status.numberOfLines = 0
+        status.frame = CGRect(x: 40, y: 40, width: 1400, height: 120)
         view.addSubview(status)
-        connect()
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        if hostSpec == nil { promptForHost() } else { connect() }
     }
 
     override func viewDidLayoutSubviews() {
@@ -28,14 +47,48 @@ final class StreamViewController: UIViewController {
         renderer.layer.frame = view.bounds
     }
 
+    override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        if presses.contains(where: { $0.type == .playPause }) { promptForHost() }
+        else { super.pressesBegan(presses, with: event) }
+    }
+
+    private func promptForHost() {
+        guard presentedViewController == nil else { return }
+        let alert = UIAlertController(title: "PC address", message: "IP address of the PC running the PCTV host, e.g. 192.168.1.20", preferredStyle: .alert)
+        alert.addTextField { $0.placeholder = "192.168.1.20"; $0.text = self.savedHost; $0.keyboardType = .numbersAndPunctuation }
+        alert.addAction(UIAlertAction(title: "Connect", style: .default) { [weak self] _ in
+            guard let self else { return }
+            let text = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespaces) ?? ""
+            if !text.isEmpty { self.savedHost = text }
+            self.conn?.cancel()
+            self.connect()
+        })
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        present(alert, animated: true)
+    }
+
+    private func parseHost() -> (String, UInt16)? {
+        guard let spec = hostSpec else { return nil }
+        let parts = spec.split(separator: ":")
+        guard let h = parts.first else { return nil }
+        return (String(h), parts.count > 1 ? UInt16(parts[1]) ?? Self.defaultPort : Self.defaultPort)
+    }
+
     private func connect() {
-        status.text = "Connecting to \(Self.hostAddress)…"
-        let c = Connection(host: Self.hostAddress, port: Self.port)
+        guard let (host, port) = parseHost() else { promptForHost(); return }
+        generation += 1
+        let gen = generation
+        videoCount = 0; audioCount = 0
+        status.text = "Connecting to \(host):\(port)…   (Play/Pause: change address)"
+        let c = Connection(host: host, port: port)
         conn = c
         c.onMessage = { [weak self] type, payload in self?.handle(type, payload) }
         c.onClose = { [weak self] _ in
-            self?.status.text = "Disconnected, retrying"
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { self?.connect() }
+            guard let self, gen == self.generation else { return }
+            self.status.text = "Disconnected, retrying \(host):\(port)…   (Play/Pause: change address)"
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+                if let self, gen == self.generation { self.connect() }
+            }
         }
         c.start { [weak c] in
             let tvId = UIDevice.current.identifierForVendor?.uuidString ?? "appletv"
@@ -46,8 +99,6 @@ final class StreamViewController: UIViewController {
             ]))
         }
     }
-
-    private var videoCount = 0, audioCount = 0
 
     private func handle(_ type: MsgType, _ p: Data) {
         switch type {

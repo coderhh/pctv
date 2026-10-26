@@ -11,7 +11,7 @@ brew install xcodegen
 cd tvos && xcodegen && open PcTv.xcodeproj
 ```
 
-1. Edit `hostAddress` in `tvos/PcTv/UI/StreamViewController.swift` to the PC's LAN IP.
+1. On first launch the app asks for the PC's IP (saved across rebuilds; Play/Pause on the remote changes it). Or set env var `PCTV_HOST` in the Xcode scheme (Run > Arguments).
 2. Set your signing team, then run on the Apple TV.
 
 ## Run the host (Windows)
