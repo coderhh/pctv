@@ -150,9 +150,22 @@ public sealed class Server(Config cfg, Pairing pairing, bool testPattern)
             await foreach (var c in new ToneAudioSource().ReadAsync(ct)) await SendTimed(MsgType.Audio, c.PtsMicros, c.Pcm);
         }
 
-        try { await Task.WhenAll(Video(), Audio()); }
-        catch (Exception e) when (e is OperationCanceledException or IOException or ObjectDisposedException) { }
-        catch (Exception e) { Console.Error.WriteLine($"stream error: {e.Message}"); }
+        async Task Stats()
+        {
+            long lastV = 0, lastA = 0;
+            while (!ct.IsCancellationRequested)
+            {
+                await Task.Delay(2000, ct);
+                long v = Interlocked.Read(ref HostStatus.VideoFrames), a = Interlocked.Read(ref HostStatus.AudioChunks);
+                HostStatus.Log($"stream: +{v - lastV} video, +{a - lastA} audio in 2s (totals {v}/{a})");
+                (lastV, lastA) = (v, a);
+            }
+        }
+
+        HostStatus.Log("stream: starting ffmpeg + tone");
+        try { await Task.WhenAll(Video(), Audio(), Stats()); HostStatus.Log("stream: ended (ffmpeg exited?)"); }
+        catch (Exception e) when (e is OperationCanceledException or ObjectDisposedException) { }
+        catch (Exception e) { HostStatus.Log($"stream error: {e.GetType().Name}: {e.Message}"); }
     }
 
     static object LoadApps()

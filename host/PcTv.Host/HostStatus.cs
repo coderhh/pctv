@@ -25,6 +25,7 @@ public static class HostStatus
         {
             Lines.Enqueue(line);
             while (Lines.Count > 200) Lines.Dequeue();
+            try { File.AppendAllText(Path.Combine(Config.DataDir, "host.log"), line + Environment.NewLine); } catch { }
         }
     }
 

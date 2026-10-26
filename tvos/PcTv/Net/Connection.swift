@@ -19,6 +19,7 @@ final class Connection {
 
     func start(onReady: @escaping () -> Void) {
         conn.stateUpdateHandler = { [weak self] state in
+            print("[pctv] connection state: \(state)")
             switch state {
             case .ready: DispatchQueue.main.async { onReady() }; self?.receive()
             case .failed(let e): self?.finish(e)

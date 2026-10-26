@@ -47,17 +47,29 @@ final class StreamViewController: UIViewController {
         }
     }
 
+    private var videoCount = 0, audioCount = 0
+
     private func handle(_ type: MsgType, _ p: Data) {
         switch type {
         case .welcome:
+            print("[pctv] WELCOME: \(String(data: p, encoding: .utf8) ?? "?")")
             if let o = try? JSONSerialization.jsonObject(with: p) as? [String: Any], let e = o["error"] as? String {
                 status.text = "Host refused: \(e)"
             } else {
                 status.text = ""
-                try? player.start()
+                do { try player.start(); print("[pctv] audio engine started") }
+                catch { print("[pctv] audio start failed: \(error)") }
             }
-        case .video: renderer.enqueue(accessUnit: p.dropFirst(8))
-        case .audio: player.enqueue(pcm: p.dropFirst(8))
+        case .video:
+            videoCount += 1
+            renderer.enqueue(accessUnit: p.dropFirst(8))
+            if videoCount == 1 || videoCount % 60 == 0 {
+                print("[pctv] video #\(videoCount) bytes=\(p.count) layerStatus=\(renderer.layer.status.rawValue) err=\(String(describing: renderer.layer.error))")
+            }
+        case .audio:
+            audioCount += 1
+            player.enqueue(pcm: p.dropFirst(8))
+            if audioCount == 1 || audioCount % 200 == 0 { print("[pctv] audio #\(audioCount)") }
         case .ping: conn?.send(Protocol.frame(.pong, p))
         default: break
         }

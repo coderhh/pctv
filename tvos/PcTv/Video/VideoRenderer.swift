@@ -72,6 +72,7 @@ final class VideoRenderer {
                 parameterSetPointers: ptrs, parameterSetSizes: sizes, nalUnitHeaderLength: 4,
                 extensions: nil, formatDescriptionOut: &fmt)
         } } }
+        print("[pctv] HEVC format description status=\(status)")
         if status == noErr { format = fmt }
     }
 }
