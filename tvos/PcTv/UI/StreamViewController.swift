@@ -57,8 +57,7 @@ final class StreamViewController: UIViewController {
                 status.text = "Host refused: \(e)"
             } else {
                 status.text = ""
-                do { try player.start(); print("[pctv] audio engine started") }
-                catch { print("[pctv] audio start failed: \(error)") }
+                player.start()
             }
         case .video:
             videoCount += 1

@@ -1,11 +1,14 @@
 import AVFoundation
 
 /// s16le 48 kHz stereo → AVAudioEngine. Starts playback after a small jitter buffer has queued.
+/// Audio session activation blocks, so start() runs it off the main thread; audio arriving before
+/// the engine is running is dropped. Call enqueue from the main thread only.
 final class PCMPlayer {
     private let engine = AVAudioEngine()
     private let node = AVAudioPlayerNode()
     private let format = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 48000, channels: 2, interleaved: false)!
     private var queuedFrames = 0
+    private var ready = false
     private let startThreshold = 48000 * 70 / 1000 // ~70 ms
 
     init() {
@@ -13,15 +16,24 @@ final class PCMPlayer {
         engine.connect(node, to: engine.mainMixerNode, format: format)
     }
 
-    func start() throws {
-        try AVAudioSession.sharedInstance().setCategory(.playback)
-        try AVAudioSession.sharedInstance().setActive(true)
-        try engine.start()
+    func start() {
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self else { return }
+            do {
+                try AVAudioSession.sharedInstance().setCategory(.playback)
+                try AVAudioSession.sharedInstance().setActive(true)
+                try self.engine.start()
+                DispatchQueue.main.async { self.ready = true; print("[pctv] audio engine started") }
+            } catch {
+                print("[pctv] audio start failed: \(error)")
+            }
+        }
     }
 
-    func stop() { node.stop(); engine.stop() }
+    func stop() { ready = false; node.stop(); engine.stop() }
 
     func enqueue(pcm: Data) {
+        guard ready else { return }
         let frames = pcm.count / 4
         guard frames > 0, let buf = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(frames)) else { return }
         buf.frameLength = AVAudioFrameCount(frames)
