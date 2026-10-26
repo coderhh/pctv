@@ -36,3 +36,4 @@ public class ProtocolTests
         await Assert.ThrowsAsync<InvalidDataException>(() => Protocol.ReadAsync(ms));
     }
 }
+

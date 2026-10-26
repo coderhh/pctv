@@ -14,6 +14,10 @@ public static class HostStatus
     public static volatile string? Remote;
     public static long VideoFrames, VideoBytes, AudioChunks;
     public static volatile string? Error;
+    public static volatile string MonitorText = "n/a";
+    public static volatile string ChromeText = "n/a";
+    /// <summary>Set by the browser host once the virtual monitor is found; read by the capture pipeline.</summary>
+    public static volatile PcTv.Host.Display.MonitorInfo? Monitor;
 
     public static bool Connected => Remote is not null;
 

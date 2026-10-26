@@ -123,7 +123,12 @@ public sealed class Server(Config cfg, Pairing pairing, bool testPattern)
     /// <summary>Pumps VIDEO and AUDIO until the session ends. Real capture arrives in M2/M4.</summary>
     async Task StreamAsync(Stream s, SemaphoreSlim writeLock, CancellationToken ct)
     {
-        if (!testPattern) return;
+        var mon = HostStatus.Monitor;
+        if (!testPattern && mon is null)
+        {
+            HostStatus.Log("stream: no virtual monitor yet, nothing to capture");
+            return;
+        }
 
         async Task SendTimed(MsgType type, long pts, byte[] data)
         {
@@ -142,11 +147,12 @@ public sealed class Server(Config cfg, Pairing pairing, bool testPattern)
 
         async Task Video()
         {
-            await using var src = FfmpegVideoSource.TestPattern(cfg);
+            await using var src = testPattern ? FfmpegVideoSource.TestPattern(cfg) : FfmpegVideoSource.Ddagrab(cfg, mon!);
             await foreach (var f in src.ReadAsync(ct)) await SendTimed(MsgType.Video, f.PtsMicros, f.AnnexB);
         }
         async Task Audio()
         {
+            if (!testPattern) return; // real audio capture arrives in M4
             await foreach (var c in new ToneAudioSource().ReadAsync(ct)) await SendTimed(MsgType.Audio, c.PtsMicros, c.Pcm);
         }
 

@@ -7,7 +7,7 @@ namespace PcTv.Host;
 /// <summary>Small status window plus tray icon. Closing the window hides it; use the tray menu to quit.</summary>
 public sealed class StatusWindow : Form
 {
-    readonly Label _server = new(), _tv = new(), _video = new(), _audio = new();
+    readonly Label _server = new(), _tv = new(), _video = new(), _audio = new(), _monitor = new(), _chrome = new();
     readonly TextBox _log = new();
     readonly NotifyIcon _tray = new();
     readonly System.Windows.Forms.Timer _timer = new() { Interval = 500 };
@@ -20,7 +20,7 @@ public sealed class StatusWindow : Form
     {
         _quit = quit;
         Text = "PCTV Host";
-        ClientSize = new Size(520, 360);
+        ClientSize = new Size(520, 420);
         StartPosition = FormStartPosition.CenterScreen;
         Font = new Font("Segoe UI", 9.5f);
 
@@ -34,6 +34,8 @@ public sealed class StatusWindow : Form
             table.Controls.Add(value);
         }
         Row("Server", _server);
+        Row("Monitor", _monitor);
+        Row("Chrome", _chrome);
         Row("Apple TV", _tv);
         Row("Video", _video);
         Row("Audio", _audio);
@@ -81,6 +83,10 @@ public sealed class StatusWindow : Form
             ? $"Listening on port {HostStatus.Port}{(HostStatus.TestPattern ? "  (test pattern)" : "")}"
             : HostStatus.Error ?? "Not running";
         _server.ForeColor = HostStatus.Listening ? Color.SeaGreen : Color.Firebrick;
+        _monitor.Text = HostStatus.TestPattern ? "n/a (test pattern)" : HostStatus.MonitorText;
+        _monitor.ForeColor = HostStatus.Monitor is not null || HostStatus.TestPattern ? SystemColors.ControlText : Color.Firebrick;
+        _chrome.Text = HostStatus.TestPattern ? "n/a (test pattern)" : HostStatus.ChromeText;
+        _chrome.ForeColor = HostStatus.ChromeText.StartsWith("Running") ? Color.SeaGreen : SystemColors.ControlText;
         _tv.Text = HostStatus.Connected ? $"Connected: {HostStatus.TvId} ({HostStatus.Remote})" : "Waiting for connection";
         _tv.ForeColor = HostStatus.Connected ? Color.SeaGreen : SystemColors.GrayText;
         _video.Text = HostStatus.Connected && frames > 0 ? $"{fps:0} fps, {mbps:0.0} Mbps, {frames} frames" : "Idle";

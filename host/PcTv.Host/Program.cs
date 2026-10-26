@@ -16,6 +16,10 @@ switch (cmd)
         Console.WriteLine("PIN recorded; confirm it on the TV within a minute.");
         return 0;
 
+    case "monitors":
+        foreach (var m in PcTv.Host.Display.VirtualMonitor.Enumerate()) Console.WriteLine(m);
+        return 0;
+
     case "doctor":
         return Doctor.Run(cfg);
 
@@ -23,7 +27,10 @@ switch (cmd)
         using (var cts = new CancellationTokenSource())
         {
             Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); };
+            var browser = testPattern ? Task.CompletedTask : PcTv.Host.Browser.BrowserHost.RunAsync(cfg, cts.Token);
             await new Server(cfg, new Pairing(), testPattern).RunAsync(cts.Token);
+            cts.Cancel();
+            await browser;
         }
         return 0;
 
@@ -31,6 +38,7 @@ switch (cmd)
     {
         FreeConsole(); // no console window for the tray app
         var cts = new CancellationTokenSource();
+        var browser = testPattern ? Task.CompletedTask : Task.Run(() => PcTv.Host.Browser.BrowserHost.RunAsync(cfg, cts.Token));
         var server = Task.Run(async () =>
         {
             try { await new Server(cfg, new Pairing(), testPattern).RunAsync(cts.Token); }
@@ -45,6 +53,7 @@ switch (cmd)
         ui.Start();
         ui.Join();
         cts.Cancel();
+        try { await Task.WhenAny(browser, Task.Delay(3000)); } catch { } // let Chrome be killed on exit
         return 0;
     }
 

@@ -19,6 +19,12 @@ public static class Doctor
             "install the gyan.dev 'full' FFmpeg build and set FfmpegPath in pctv.json");
         Check($"TV Chrome ({cfg.ChromePath})", File.Exists(cfg.ChromePath),
             "unpack Chrome for Testing / Chromium there and set ChromePath in pctv.json");
+        var mons = PcTv.Host.Display.VirtualMonitor.Enumerate();
+        var vm = PcTv.Host.Display.VirtualMonitor.Pick(mons, cfg.VirtualMonitorName, cfg.Width, cfg.Height);
+        Check($"virtual monitor ({cfg.Width}x{cfg.Height}, non-primary)", vm is not null,
+            "install a virtual display driver and add a " + cfg.Width + "x" + cfg.Height + " display (Settings > System > Display), or set VirtualMonitorName; found: " +
+            string.Join("; ", mons.Select(m => $"{m.DeviceName} {m.Width}x{m.Height}")));
+        if (vm is not null) Console.WriteLine($"       {vm}");
         return bad == 0 ? 0 : 1;
     }
 
