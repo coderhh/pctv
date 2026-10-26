@@ -15,7 +15,7 @@ public static class Doctor
         }
 
         Check($"config: {Config.ConfigPath}", File.Exists(Config.ConfigPath), "run `pctv run` once to create it");
-        Check($"ffmpeg ({cfg.FfmpegPath})", FfmpegHas(cfg.FfmpegPath, "hevc_nvenc") && FfmpegHas(cfg.FfmpegPath, "ddagrab"),
+        Check($"ffmpeg ({cfg.FfmpegPath})", FfmpegHas(cfg.FfmpegPath, "-encoders", "hevc_nvenc") && FfmpegHas(cfg.FfmpegPath, "-filters", "ddagrab"),
             "install the gyan.dev 'full' FFmpeg build and set FfmpegPath in pctv.json");
         Check($"TV Chrome ({cfg.ChromePath})", File.Exists(cfg.ChromePath),
             "unpack Chrome for Testing / Chromium there and set ChromePath in pctv.json");
@@ -28,11 +28,11 @@ public static class Doctor
         return bad == 0 ? 0 : 1;
     }
 
-    static bool FfmpegHas(string exe, string token)
+    static bool FfmpegHas(string exe, string listArg, string token)
     {
         try
         {
-            var psi = new ProcessStartInfo(exe, "-hide_banner -encoders -filters")
+            var psi = new ProcessStartInfo(exe, $"-hide_banner {listArg}")
             { RedirectStandardOutput = true, UseShellExecute = false, CreateNoWindow = true };
             using var p = Process.Start(psi)!;
             var o = p.StandardOutput.ReadToEnd();
