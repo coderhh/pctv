@@ -1,0 +1,5 @@
+[
+  { "id": "youtube", "title": "YouTube", "url": "https://www.youtube.com/" },
+  { "id": "twitch", "title": "Twitch", "url": "https://www.twitch.tv/" },
+  { "id": "bilibili", "title": "Bilibili", "url": "https://www.bilibili.com/" }
+]

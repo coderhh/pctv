@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>pctv</AssemblyName>
+    <RootNamespace>PcTv.Host</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Update="apps.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

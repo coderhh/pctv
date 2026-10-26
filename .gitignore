@@ -1,0 +1,9 @@
+bin/
+obj/
+.vs/
+*.hevc
+*.wav
+*.xcodeproj/
+xcuserdata/
+DerivedData/
+__pycache__/

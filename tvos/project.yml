@@ -1,0 +1,18 @@
+# Generate the Xcode project on the Mac:  brew install xcodegen && cd tvos && xcodegen
+name: PcTv
+options:
+  bundleIdPrefix: com.example
+  deploymentTarget:
+    tvOS: "17.0"
+targets:
+  PcTv:
+    type: application
+    platform: tvOS
+    sources: [PcTv]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.pctv
+        SWIFT_VERSION: "5.9"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_NSLocalNetworkUsageDescription: "Connects to your PC to show its browser."
+        INFOPLIST_KEY_NSBonjourServices: ["_pctv._tcp"]
