@@ -16,8 +16,13 @@ public sealed class Server(Config cfg, Pairing pairing, bool testPattern)
     public async Task RunAsync(CancellationToken ct)
     {
         var listener = new TcpListener(IPAddress.Any, cfg.Port);
-        listener.Start();
-        Console.WriteLine($"pctv listening on :{cfg.Port} (host id {_hostId}){(testPattern ? " [test pattern]" : "")}");
+        try { listener.Start(); }
+        catch (SocketException e) { HostStatus.Error = $"Cannot listen on port {cfg.Port}: {e.Message}"; throw; }
+        HostStatus.Listening = true;
+        HostStatus.Port = cfg.Port;
+        HostStatus.HostId = _hostId;
+        HostStatus.TestPattern = testPattern;
+        HostStatus.Log($"pctv listening on :{cfg.Port} (host id {_hostId}){(testPattern ? " [test pattern]" : "")}");
         using var stopReg = ct.Register(listener.Stop);
         while (!ct.IsCancellationRequested)
         {
@@ -34,7 +39,7 @@ public sealed class Server(Config cfg, Pairing pairing, bool testPattern)
     async Task HandleAsync(TcpClient client, CancellationToken ct)
     {
         var remote = client.Client.RemoteEndPoint;
-        Console.WriteLine($"[{remote}] connected");
+        HostStatus.Log($"[{remote}] connected");
         try
         {
             using var _c = client;
@@ -77,7 +82,10 @@ public sealed class Server(Config cfg, Pairing pairing, bool testPattern)
                             viewport = new { w = cfg.Width / 2, h = cfg.Height / 2 },
                         });
                         await Send(MsgType.Apps, LoadApps());
-                        Console.WriteLine($"[{remote}] session started for tv {tvId}");
+                        HostStatus.ResetSession();
+                        HostStatus.TvId = tvId;
+                        HostStatus.Remote = remote?.ToString();
+                        HostStatus.Log($"[{remote}] session started for tv {tvId}");
                         _ = StreamAsync(s, writeLock, ct);
                         break;
                     }
@@ -88,7 +96,7 @@ public sealed class Server(Config cfg, Pairing pairing, bool testPattern)
                         var pin = doc.RootElement.GetProperty("pin").GetString() ?? "";
                         var token = pairing.TryPair(id, pin);
                         await Send(MsgType.PairResult, token is null ? new { ok = false } : new { ok = true, token });
-                        Console.WriteLine($"[{remote}] pairing {(token is null ? "failed" : "succeeded")} for tv {id}");
+                        HostStatus.Log($"[{remote}] pairing {(token is null ? "failed" : "succeeded")} for tv {id}");
                         break;
                     }
                     case MsgType.Ping:
@@ -108,7 +116,8 @@ public sealed class Server(Config cfg, Pairing pairing, bool testPattern)
         {
             Console.Error.WriteLine($"[{remote}] error: {e.Message}");
         }
-        Console.WriteLine($"[{remote}] disconnected");
+        if (HostStatus.Remote == remote?.ToString()) { HostStatus.Remote = null; HostStatus.TvId = null; }
+        HostStatus.Log($"[{remote}] disconnected");
     }
 
     /// <summary>Pumps VIDEO and AUDIO until the session ends. Real capture arrives in M2/M4.</summary>
@@ -123,6 +132,12 @@ public sealed class Server(Config cfg, Pairing pairing, bool testPattern)
             data.CopyTo(payload, 8);
             await writeLock.WaitAsync(ct);
             try { await Protocol.WriteAsync(s, type, payload, ct); } finally { writeLock.Release(); }
+            if (type == MsgType.Video)
+            {
+                Interlocked.Increment(ref HostStatus.VideoFrames);
+                Interlocked.Add(ref HostStatus.VideoBytes, payload.Length);
+            }
+            else Interlocked.Increment(ref HostStatus.AudioChunks);
         }
 
         async Task Video()

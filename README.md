@@ -20,7 +20,9 @@ Set `"RequirePairing": false` in `%APPDATA%\pctv\pctv.json` (until M7), then:
 
 ```
 cd host
-dotnet run --project PcTv.Host -- run --test-pattern
+dotnet run --project PcTv.Host -- ui --test-pattern
 ```
+
+`ui` opens a small status window with a tray icon (server, TV connection, fps/bitrate, log); closing the window hides it, quit from the tray menu. `run` is the console-only equivalent.
 
 Allow TCP 47800 through Windows Firewall. Needs ffmpeg with `hevc_nvenc` on PATH.
