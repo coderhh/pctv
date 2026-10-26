@@ -30,5 +30,5 @@ Allow TCP 47800 through Windows Firewall. Needs ffmpeg with `hevc_nvenc` on PATH
 ## M2 prerequisites (Windows)
 
 - A virtual 3840x2160@60 monitor (e.g. VirtualDrivers/Virtual-Display-Driver). The host only auto-picks monitors whose hardware ID looks virtual; otherwise set `VirtualMonitorName` (e.g. `\\.\DISPLAY3`) in `pctv.json`. Run `pctv monitors` to list outputs.
-- A separate Chrome (Chrome for Testing) at `C:\pctv\chrome\chrome.exe`, or set `ChromePath`.
+- A separate Chromium browser for the TV: Chrome for Testing at `C:\pctv\chrome\chrome.exe` (default), or Brave (set `ChromePath` to `...\Brave-Browser\Application\brave.exe`). It must be a different exe from the browser you use daily, because Windows routes audio per exe (M4). Set `ChromeProxy` to `direct` or a proxy address if the system proxy is not what you want for the TV.
 - Then `pctv ui` (without `--test-pattern`) launches TV Chrome on that monitor and streams it. `pctv doctor` checks all of this.
