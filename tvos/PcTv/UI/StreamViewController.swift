@@ -47,7 +47,7 @@ final class StreamViewController: UIViewController {
         Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             guard let self else { return }
             self.tick += 1
-            let c = self.conn?.debugCounts ?? (0, 0)
+            let c = self.conn?.debugCounts ?? (bytes: 0, messages: 0)
             self.debugLabel.text = "tick \(self.tick) | rx \(c.bytes / 1024) KB, \(c.messages) msgs | video \(self.videoCount) audio \(self.audioCount) | layer \(self.renderer.layer.status.rawValue) | \(self.renderer.formatReady ? "fmt ok" : "no fmt")"
         }
     }
