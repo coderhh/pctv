@@ -9,6 +9,8 @@
     <AssemblyName>pctv</AssemblyName>
     <RootNamespace>PcTv.Host</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- DPI awareness must come from the manifest so console commands (monitors, doctor) get real pixels too. -->
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

@@ -10,6 +10,8 @@ public sealed class Config
     public string ChromePath { get; set; } = @"C:\pctv\chrome\chrome.exe";
     public int ChromeDebugPort { get; set; } = 9222;
     public string HomeUrl { get; set; } = "https://www.youtube.com/";
+    /// <summary>null = Windows system proxy; "direct" = no proxy; otherwise a Chrome --proxy-server value, e.g. "127.0.0.1:7897".</summary>
+    public string? ChromeProxy { get; set; }
     public string? VirtualMonitorName { get; set; }
     public int Width { get; set; } = 3840;
     public int Height { get; set; } = 2160;

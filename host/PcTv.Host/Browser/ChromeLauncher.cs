@@ -14,6 +14,12 @@ public sealed class ChromeLauncher(Config cfg)
 
     public static string[] BuildArgs(Config cfg, MonitorInfo mon, string url) =>
     [
+        .. cfg.ChromeProxy switch
+        {
+            null or "" => Array.Empty<string>(),
+            "direct" => ["--no-proxy-server"],
+            var p => [$"--proxy-server={p}"],
+        },
         $"--user-data-dir={ProfileDir}",
         $"--remote-debugging-port={cfg.ChromeDebugPort}",
         "--remote-allow-origins=http://127.0.0.1",
