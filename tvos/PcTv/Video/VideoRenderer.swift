@@ -13,15 +13,18 @@ final class VideoRenderer {
 
     func enqueue(accessUnit: Data) {
         var slices: [Data] = []
-        for nal in AnnexB.nalUnits(accessUnit) {
+        var paramsChanged = false
+        let nals = AnnexB.nalUnits(accessUnit)
+        for nal in nals {
             switch AnnexB.hevcType(nal) {
-            case 32: updateParam(&vps, nal)
-            case 33: updateParam(&sps, nal)
-            case 34: updateParam(&pps, nal)
+            case 32: if vps != nal { vps = nal; paramsChanged = true }
+            case 33: if sps != nal { sps = nal; paramsChanged = true }
+            case 34: if pps != nal { pps = nal; paramsChanged = true }
             case 0...31: slices.append(nal)
             default: break // AUD, SEI
             }
         }
+        if paramsChanged { rebuildFormat() }
         guard let format, !slices.isEmpty else { return }
 
         var avcc = Data()
@@ -53,13 +56,6 @@ final class VideoRenderer {
 
         if layer.status == .failed { layer.flush(); onFailure?() }
         layer.enqueue(sample)
-    }
-
-    private func updateParam(_ slot: inout Data?, _ nal: Data) {
-        if slot != nal {
-            slot = nal
-            rebuildFormat()
-        }
     }
 
     private func rebuildFormat() {
