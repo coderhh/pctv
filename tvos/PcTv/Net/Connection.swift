@@ -8,6 +8,14 @@ final class Connection {
 
     private let conn: NWConnection
     private var buffer = Data()
+
+    /// Debug counters, written on the network queue and read from the main thread.
+    private let statsLock = NSLock()
+    private var _bytes = 0, _messages = 0
+    var debugCounts: (bytes: Int, messages: Int) {
+        statsLock.lock(); defer { statsLock.unlock() }
+        return (_bytes, _messages)
+    }
     private let queue = DispatchQueue(label: "pctv.net")
 
     init(host: String, port: UInt16) {
@@ -38,7 +46,11 @@ final class Connection {
     private func receive() {
         conn.receive(minimumIncompleteLength: 1, maximumLength: 1 << 20) { [weak self] data, _, isDone, error in
             guard let self else { return }
-            if let data { self.buffer.append(data); self.drain() }
+            if let data {
+                self.statsLock.lock(); self._bytes += data.count; self.statsLock.unlock()
+                self.buffer.append(data)
+                self.drain()
+            }
             if isDone || error != nil { self.finish(error); return }
             self.receive()
         }
@@ -52,6 +64,7 @@ final class Connection {
             let type = buffer[base]
             let payload = buffer.subdata(in: base + 6 ..< base + 6 + len)
             buffer.removeSubrange(base ..< base + 6 + len)
+            statsLock.lock(); _messages += 1; statsLock.unlock()
             if let t = MsgType(rawValue: type) {
                 DispatchQueue.main.async { self.onMessage?(t, payload) }
             }

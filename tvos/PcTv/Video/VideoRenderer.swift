@@ -7,6 +7,7 @@ final class VideoRenderer {
     private var vps: Data?, sps: Data?, pps: Data?
     private var format: CMVideoFormatDescription?
     var onFailure: (() -> Void)?
+    var formatReady: Bool { format != nil }
 
     init() { layer.videoGravity = .resizeAspect }
 

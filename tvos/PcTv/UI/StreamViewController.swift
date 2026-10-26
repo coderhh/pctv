@@ -14,6 +14,8 @@ final class StreamViewController: UIViewController {
     private var conn: Connection?
     private let status = UILabel()
     private var videoCount = 0, audioCount = 0
+    private let debugLabel = UILabel()
+    private var tick = 0
     private var generation = 0 // invalidates reconnect timers from older connections
 
     private var savedHost: String? {
@@ -35,6 +37,19 @@ final class StreamViewController: UIViewController {
         status.numberOfLines = 0
         status.frame = CGRect(x: 40, y: 40, width: 1400, height: 120)
         view.addSubview(status)
+
+        // Debug line: if "tick" stops, the main thread is hung; if "rx" stops, the network side is stuck.
+        debugLabel.textColor = .yellow
+        debugLabel.font = .monospacedSystemFont(ofSize: 24, weight: .regular)
+        debugLabel.frame = CGRect(x: 40, y: view.bounds.height - 90, width: view.bounds.width - 80, height: 50)
+        debugLabel.autoresizingMask = [.flexibleTopMargin, .flexibleWidth]
+        view.addSubview(debugLabel)
+        Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            self.tick += 1
+            let c = self.conn?.debugCounts ?? (0, 0)
+            self.debugLabel.text = "tick \(self.tick) | rx \(c.bytes / 1024) KB, \(c.messages) msgs | video \(self.videoCount) audio \(self.audioCount) | layer \(self.renderer.layer.status.rawValue) | \(self.renderer.formatReady ? "fmt ok" : "no fmt")"
+        }
     }
 
     override func viewDidAppear(_ animated: Bool) {
